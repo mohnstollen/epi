@@ -71,7 +71,7 @@ def _cloud(draw, x, y, w, h, lw, fill=WHITE):
             ("e", (x + w * 0.06 - g, y + h * 0.42 - g, x + w * 0.46 + g, y + h * 0.98 + g)),
             ("e", (x + w * 0.26 - g, y + h * 0.04 - g, x + w * 0.74 + g, y + h * 0.80 + g)),
             ("e", (x + w * 0.56 - g, y + h * 0.36 - g, x + w * 0.96 + g, y + h * 0.98 + g)),
-            ("r", (x + w * 0.24, y + h * 0.60 - g, x + w * 0.78, y + h * 0.98 + g)),
+            ("r", (x + w * 0.24, y + h * (0.60 if g >= 0 else 0.50), x + w * 0.78, y + h * 0.98 + g)),
         ]
     for color, grow in ((BLACK, 0), (fill, -lw)):
         for kind, box in parts(grow):
