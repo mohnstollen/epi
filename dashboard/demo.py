@@ -28,3 +28,22 @@ HEADLINES = [
     "Fußball-Bundesliga: Spitzenspiel endet unentschieden",
     "Wissenschaftler entdecken neue Tiefseeart vor der Küste Norwegens",
 ]
+
+
+def _hourly():
+    import math
+    from datetime import datetime
+
+    from .sources import HourValue
+
+    start = datetime.now().replace(minute=0, second=0, microsecond=0)
+    values = []
+    for h in range(24):
+        t = start + timedelta(hours=h)
+        temp = 8.5 + 5 * math.sin((t.hour - 9) / 24 * 2 * math.pi)
+        rain = max(0.0, 1.4 * math.sin((h - 9) / 6 * math.pi)) if 9 <= h <= 15 else 0.0
+        values.append(HourValue(t, round(temp, 1), round(rain, 1)))
+    return values
+
+
+HOURLY = _hourly()

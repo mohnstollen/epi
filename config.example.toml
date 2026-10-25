@@ -1,14 +1,22 @@
-# Kopieren nach config.toml und anpassen.
+# Kopieren nach config.toml und anpassen:  cp config.example.toml config.toml
 
-# Standort (Dezimalgrad) – für Wetter und Tankstellensuche
+# Standort (Dezimalgrad) – für Wetter und Tankstellensuche.
+# Koordinaten z. B. per Rechtsklick auf den Ort in Google Maps / OpenStreetMap.
 latitude = 52.5200
 longitude = 13.4050
-location_name = "Berlin"
+location_name = "Berlin"      # Anzeige in der Kopfzeile
 
-# API-Key von https://creativecommons.tankerkoenig.de (kostenlos)
+# API-Key von https://onboarding.tankerkoenig.de (kostenlos)
 tankerkoenig_api_key = "00000000-0000-0000-0000-000000000000"
 fuel_radius_km = 5.0          # Suchradius, max. 25 km
 
-interval_seconds = 180        # Wechsel der Anzeige alle 3 Minuten
+# Angeschlossenes Display:
+#   "2in7" – 2.7inch e-Paper HAT (264x176), vier Ansichten im Wechsel
+#   "7in5" – 7.5inch e-Paper HAT V2 (800x480), alles auf einer Seite
+display = "2in7"
+
+# Aktualisierung in Sekunden. Ohne Angabe: 180 bei "2in7", 600 bei "7in5".
+# interval_seconds = 180
+
 rotate180 = false             # true, falls das Bild auf dem Kopf steht
 max_headlines = 5             # Obergrenze; es werden nur so viele gezeigt, wie lesbar passen

@@ -150,7 +150,7 @@ def _price(draw, x, y, price):
     return bx + draw.textlength(small, font=fs)
 
 
-def _fit(draw, text, f, width):
+def fit(draw, text, f, width):
     if draw.textlength(text, font=f) <= width:
         return text
     while text and draw.textlength(text + "…", font=f) > width:
@@ -178,11 +178,11 @@ def render_fuel(cfg, cached, now=None):
             draw.line((6, y, W - 6, y), fill=BLACK)
         _price(draw, 6, y + 8, s.price)
         tw = W - tx - 6
-        draw.text((tx, y + 6), _fit(draw, s.brand or s.name, font(14, bold=True), tw),
+        draw.text((tx, y + 6), fit(draw, s.brand or s.name, font(14, bold=True), tw),
                   font=font(14, bold=True), fill=BLACK)
-        draw.text((tx, y + 23), _fit(draw, s.street, font(12), tw), font=font(12), fill=BLACK)
+        draw.text((tx, y + 23), fit(draw, s.street, font(12), tw), font=font(12), fill=BLACK)
         loc = f"{s.place} · {de_number(s.distance_km, 1)} km"
-        draw.text((tx, y + 37), _fit(draw, loc, font(12), tw), font=font(12), fill=BLACK)
+        draw.text((tx, y + 37), fit(draw, loc, font(12), tw), font=font(12), fill=BLACK)
     return img
 
 
@@ -203,7 +203,7 @@ def render_news(cfg, cached, now=None):
         lines = wrap(draw, title, f, W - indent - 6)
         if len(lines) > 3:  # sehr lange Schlagzeilen kürzen
             lines = lines[:3]
-            lines[-1] = _fit(draw, lines[-1] + " …", f, W - indent - 6)
+            lines[-1] = fit(draw, lines[-1] + " …", f, W - indent - 6)
         if y + len(lines) * line_h > H - 2:
             break
         if shown:

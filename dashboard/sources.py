@@ -7,7 +7,8 @@ import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
+from zoneinfo import ZoneInfo
 
 log = logging.getLogger(__name__)
 
@@ -45,6 +46,13 @@ class DayForecast:
     temp_max: float
     temp_min: float
     precipitation: float | None
+
+
+@dataclass
+class HourValue:
+    time: datetime
+    temperature: float
+    precipitation: float
 
 
 @dataclass
@@ -107,6 +115,34 @@ def fetch_forecast(cfg, days=3):
             precipitation=d["precipitation_sum"][i],
         ))
     return result[:days]
+
+
+def fetch_hourly(cfg, hours=24):
+    """Stündliche Temperatur und Niederschlag ab der aktuellen Stunde (ICON-D2)."""
+    params = {
+        "latitude": cfg.latitude,
+        "longitude": cfg.longitude,
+        "hourly": "temperature_2m,precipitation",
+        "forecast_days": 2,
+        "timezone": cfg.timezone,
+    }
+    this_hour = datetime.now(ZoneInfo(cfg.timezone)).replace(
+        minute=0, second=0, microsecond=0, tzinfo=None)
+
+    def parse(hourly):
+        result = []
+        for t, temp, prec in zip(hourly["time"], hourly["temperature_2m"],
+                                 hourly["precipitation"]):
+            t = datetime.fromisoformat(t)
+            if t >= this_hour and temp is not None:
+                result.append(HourValue(t, temp, prec or 0.0))
+        return result[:hours]
+
+    result = parse(_get_json(OPEN_METEO_DWD, {**params, "models": "icon_d2"})["hourly"])
+    if len(result) < hours:
+        log.warning("ICON-D2 liefert zu wenige Stundenwerte, verwende icon_seamless")
+        result = parse(_get_json(OPEN_METEO_DWD, {**params, "models": "icon_seamless"})["hourly"])
+    return result
 
 
 def fetch_fuel_prices(cfg, count=3):
