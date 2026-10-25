@@ -1,0 +1,15 @@
+[Unit]
+Description=E-Paper-Dashboard (Wetter, Vorhersage, E10, tagesschau)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/epi
+ExecStart=/usr/bin/python3 -m dashboard --config /home/pi/epi/config.toml
+Restart=on-failure
+RestartSec=30
+
+[Install]
+WantedBy=multi-user.target

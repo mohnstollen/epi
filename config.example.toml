@@ -1,0 +1,14 @@
+# Kopieren nach config.toml und anpassen.
+
+# Standort (Dezimalgrad) – für Wetter und Tankstellensuche
+latitude = 52.5200
+longitude = 13.4050
+location_name = "Berlin"
+
+# API-Key von https://creativecommons.tankerkoenig.de (kostenlos)
+tankerkoenig_api_key = "00000000-0000-0000-0000-000000000000"
+fuel_radius_km = 5.0          # Suchradius, max. 25 km
+
+interval_seconds = 180        # Wechsel der Anzeige alle 3 Minuten
+rotate180 = false             # true, falls das Bild auf dem Kopf steht
+max_headlines = 5             # Obergrenze; es werden nur so viele gezeigt, wie lesbar passen

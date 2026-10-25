@@ -1,0 +1,5 @@
+# Auf Raspberry Pi OS besser per apt installieren (siehe README):
+#   python3-pil python3-spidev python3-gpiozero python3-lgpio fonts-dejavu-core
+Pillow>=9.1
+spidev
+gpiozero
