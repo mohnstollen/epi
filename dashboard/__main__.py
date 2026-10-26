@@ -1,4 +1,4 @@
-"""Startpunkt: python3 -m dashboard [--config config.toml] [--preview DIR] [--demo]"""
+"""Startpunkt: python3 -m dashboard [--config config.toml] [--preview DIR | --serve] [--demo]"""
 import argparse
 import logging
 import signal
@@ -104,6 +104,9 @@ def main(argv=None):
                    help="Display aus der Konfiguration überschreiben")
     p.add_argument("--preview", type=Path, metavar="DIR",
                    help="alle Ansichten als PNG in DIR speichern statt aufs Display")
+    p.add_argument("--serve", action="store_true",
+                   help="Bild per HTTP für einen ESP32 bereitstellen statt aufs Display")
+    p.add_argument("--port", type=int, default=8080, help="Port für --serve (Standard 8080)")
     p.add_argument("--demo", action="store_true", help="Beispieldaten statt Online-Abruf")
     p.add_argument("-v", "--verbose", action="store_true")
     args = p.parse_args(argv)
@@ -118,9 +121,13 @@ def main(argv=None):
         cfg.display = args.display
     if cfg.interval_seconds is None:
         cfg.interval_seconds = config.DISPLAYS[cfg.display]
-    screens = build_screens(cfg, build_sources(cfg, args.demo))
+    data = build_sources(cfg, args.demo)
+    screens = build_screens(cfg, data)
     if args.preview:
         preview(screens, args.preview)
+    elif args.serve:
+        from .server import serve
+        serve(cfg, screens, data, port=args.port)
     else:
         run(cfg, screens)
 

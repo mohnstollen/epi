@@ -85,6 +85,65 @@ Kopfzeile erscheint ein `!` vor der Uhrzeit.
    journalctl -u epaper-dashboard -f            # Log ansehen
    ```
 
+## Variante: ESP32 als Anzeige, Raspberry Pi als Bildserver
+
+Statt das Display direkt am Pi zu betreiben, kann ein ESP32 die Anzeige
+übernehmen. Der Pi ruft weiter alle Daten ab und rendert das Bild; der ESP32
+lädt es per WLAN, zeigt es an und schläft bis zum nächsten Wechsel.
+
+```
+ Raspberry Pi                                   ESP32 + e-Paper
+ python3 -m dashboard --serve   ── WLAN/LAN ──▶  GET /image.bin
+ (Daten holen, Bild rendern)    ◀── 48000 Bytes  anzeigen, Tiefschlaf
+```
+
+### Pi: Server einrichten
+
+1. Installation wie oben (Schritte 2 und 3). SPI, `spidev` und `gpiozero`
+   werden für den Server nicht gebraucht. In `config.toml` bei `display`
+   das Display eintragen, das am **ESP32** hängt.
+2. Testen: `python3 -m dashboard --serve` und im Browser
+   `http://<IP-des-Pi>:8080/` öffnen – dort erscheint das aktuelle Bild.
+3. Als Dienst einrichten (statt `epaper-dashboard.service`):
+   ```sh
+   sudo cp epaper-server.service /etc/systemd/system/
+   sudo systemctl daemon-reload
+   sudo systemctl enable --now epaper-server
+   ```
+4. Dem Pi im Router eine feste IP-Adresse geben (DHCP-Reservierung), damit
+   der ESP32 ihn immer findet.
+
+Endpunkte: `/image.bin` (Rohdaten fürs Display, Header `X-Next-Refresh` =
+Sekunden bis zum nächsten Wechsel), `/image.png` und `/` zur Kontrolle.
+Beim 2.7"-Display bestimmt die Uhrzeit, welche der vier Ansichten dran ist;
+Pi und ESP32 bleiben so ohne Abstimmung im Takt.
+
+### ESP32: Firmware
+
+Die Firmware liegt in `esp32/epaper_dashboard/`.
+
+1. `esp32/epaper_dashboard/config.example.h` nach `config.h` kopieren und
+   WLAN, `SERVER_URL` (IP des Pi), Display und Pins eintragen.
+2. Bauen und flashen – eine der beiden Möglichkeiten:
+   * **Arduino IDE:** Boardverwalter „esp32“ (Espressif) installieren,
+     Bibliothek **GxEPD2** installieren, Ordner `epaper_dashboard` öffnen,
+     Board „ESP32 Dev Module“ wählen, hochladen.
+   * **PlatformIO:** `cd esp32 && pio run -t upload && pio device monitor`
+3. Im seriellen Monitor (115200 Baud) sieht man WLAN-Verbindung, Download
+   und Schlafdauer.
+
+Verkabelung (HAT-Kabel → ESP32-DevKit, änderbar in `config.h`):
+
+| HAT | VCC | GND | DIN | CLK | CS | DC | RST | BUSY | PWR (nur Rev2.3) |
+|-----|-----|-----|-----|-----|----|----|-----|------|------------------|
+| ESP32 | 3V3 | GND | 23 | 18 | 5 | 17 | 16 | 4 | 22 |
+
+Für das Waveshare „Universal e-Paper Driver Board“ mit ESP32 stehen die
+passenden Pins auskommentiert in `config.example.h`.
+
+Ist der Pi nicht erreichbar, bleibt das letzte Bild stehen und der ESP32
+versucht es nach einer Minute erneut.
+
 ## Konfiguration (`config.toml`)
 
 | Schlüssel | Bedeutung | Standard |
@@ -122,7 +181,11 @@ dashboard/
   screens.py      Layout der vier Ansichten (2.7")
   layout7in5.py   Ein-Seiten-Layout (7.5")
   icons.py        Wetter-Icons (mit PIL gezeichnet) und Beschreibungen
-  epd.py          Displaytreiber
+  epd.py          Displaytreiber, Pufferformat
+  server.py       HTTP-Bildserver für den ESP32 (--serve)
   demo.py         Beispieldaten
+esp32/
+  epaper_dashboard/   ESP32-Firmware (Arduino IDE / PlatformIO)
+  platformio.ini
 ```
 

@@ -12,9 +12,28 @@ DC_PIN = 25
 BUSY_PIN = 24
 PWR_PIN = 18  # nur bei neueren HATs (z. B. Driver HAT Rev2.3) belegt
 
+# Native Panelgröße (Breite, Höhe) je Display
+PANEL_SIZES = {"2in7": (176, 264), "7in5": (800, 480)}
+
+
+def to_buffer(image, display, rotate180=False):
+    """Wandelt ein PIL-Bild in den Displaypuffer: native Ausrichtung, 1 Bit je Pixel,
+    zeilenweise, höchstwertiges Bit links, 1 = weiß.
+
+    Dasselbe Format erwartet auch die ESP32-Firmware (GxEPD2 ``writeImage``).
+    """
+    width, height = PANEL_SIZES[display]
+    if image.size == (height, width):
+        image = image.rotate(90, expand=True)
+    elif image.size != (width, height):
+        raise ValueError(f"Bildgröße {image.size} passt nicht zum Display {display}")
+    if rotate180:
+        image = image.rotate(180)
+    return image.convert("1").tobytes("raw")
+
 
 class _EPD:
-    WIDTH = HEIGHT = 0      # native Ausrichtung des Panels
+    DISPLAY = ""            # Schlüssel in PANEL_SIZES
     BUSY_LEVEL = 1          # Pegel der BUSY-Leitung, solange das Panel arbeitet
 
     def __init__(self, busy_timeout=40.0):
@@ -63,15 +82,8 @@ class _EPD:
             time.sleep(0.02)
             self._poll_busy()
 
-    def _to_native(self, image, rotate180):
-        """Wandelt ein PIL-Bild in die native Ausrichtung des Panels (Modus "1")."""
-        if image.size == (self.HEIGHT, self.WIDTH):
-            image = image.rotate(90, expand=True)
-        elif image.size != (self.WIDTH, self.HEIGHT):
-            raise ValueError(f"Bildgröße {image.size} passt nicht zum Display")
-        if rotate180:
-            image = image.rotate(180)
-        return image.convert("1")
+    def getbuffer(self, image, rotate180=False):
+        return to_buffer(image, self.DISPLAY, rotate180)
 
     def close(self):
         self._spi.close()
@@ -83,7 +95,7 @@ class _EPD:
 class EPD2in7V2(_EPD):
     """2.7inch e-Paper HAT Rev2.1 (V2), 176x264."""
 
-    WIDTH, HEIGHT = 176, 264
+    DISPLAY = "2in7"
     BUSY_LEVEL = 1
 
     def init(self):
@@ -98,9 +110,6 @@ class EPD2in7V2(_EPD):
         self._command(0x11)  # Data Entry Mode: X+, Y+
         self._data(0x03)
         self._wait_busy()
-
-    def getbuffer(self, image, rotate180=False):
-        return self._to_native(image, rotate180).tobytes("raw")
 
     def display(self, buf):
         self._command(0x24)
@@ -120,7 +129,7 @@ class EPD2in7V2(_EPD):
 class EPD7in5V2(_EPD):
     """7.5inch e-Paper HAT V2, 800x480."""
 
-    WIDTH, HEIGHT = 800, 480
+    DISPLAY = "7in5"
     BUSY_LEVEL = 0
 
     def _poll_busy(self):
@@ -145,9 +154,6 @@ class EPD7in5V2(_EPD):
         self._data(0x10, 0x07)
         self._command(0x60)  # TCON
         self._data(0x22)
-
-    def getbuffer(self, image, rotate180=False):
-        return self._to_native(image, rotate180).tobytes("raw")
 
     def display(self, buf):
         self._command(0x10)  # alte Daten

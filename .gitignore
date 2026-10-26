@@ -2,3 +2,5 @@ __pycache__/
 *.pyc
 config.toml
 preview/
+esp32/epaper_dashboard/config.h
+esp32/.pio/
