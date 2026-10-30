@@ -1,0 +1,7 @@
+config.toml
+.env
+preview/
+__pycache__/
+*.pyc
+firmware/.pio/
+firmware/infotafel/config.h

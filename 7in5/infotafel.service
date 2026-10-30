@@ -1,0 +1,18 @@
+# systemd-Dienst (Alternative zu Docker). Pfade und User anpassen:
+#   sudo cp infotafel.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now infotafel
+[Unit]
+Description=Infotafel – Bildserver für das 7.5"-e-Paper
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=thomas
+WorkingDirectory=/opt/epi/7in5
+ExecStart=/opt/epi/7in5/.venv/bin/python -m infotafel serve --config /opt/epi/7in5/config.toml --port 8080
+Restart=on-failure
+RestartSec=30
+
+[Install]
+WantedBy=multi-user.target

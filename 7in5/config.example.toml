@@ -1,0 +1,132 @@
+# Infotafel – Konfiguration
+#   cp config.example.toml config.toml   und anpassen
+#   cp .env.example .env                 und API-Keys / private Links eintragen
+#
+# Werte der Form "${NAME}" werden aus der .env-Datei (oder Umgebungsvariablen)
+# eingesetzt. So landen keine Geheimnisse im (öffentlichen) Git-Repo.
+# config.toml und .env stehen in der .gitignore.
+
+timezone = "Europe/Berlin"
+latitude = 49.5672           # Zuhause, Dezimalgrad (Wetter, Sprit, Verkehr in der Nähe)
+longitude = 10.8819
+location_name = "Herzogenaurach"
+rotate180 = false            # true, falls das Bild im Rahmen auf dem Kopf steht
+
+# --- Zeitplan ------------------------------------------------------------------
+[schedule]
+interval_minutes = 5         # Wechsel der Ansicht (mindestens 3 Minuten)
+views = ["unterwegs", "wetter", "nachrichten", "termine"]
+
+# Regeln: die erste passende gewinnt. Tage: mo di mi do fr sa so
+[[schedule.rules]]
+name = "Morgens"
+days = ["mo", "di", "mi", "do", "fr"]
+from = "06:30"
+to = "08:30"
+views = ["unterwegs", "wetter"]
+interval_minutes = 3
+
+# Nachtruhe: eine feste Ansicht, der ESP32 prüft nur selten auf Änderungen.
+# Das Display wird nur neu gezeichnet, wenn sich das Bild ändert (z. B. um 0 Uhr
+# wegen des Datums oder bei einer neuen Unwetterwarnung).
+[schedule.night]
+enabled = true
+from = "22:00"
+to = "06:00"
+view = "termine"
+check_minutes = 30
+warnings_wake = true         # bei Warnung ab warnings.night_min_severity: Wetter-Ansicht
+
+# --- Wetter-Ansicht ---------------------------------------------------------------
+[warnings]                   # DWD-Warnungen über Bright Sky (kein Key)
+enabled = true
+min_severity = "moderate"    # minor | moderate | severe | extreme
+night_min_severity = "severe"
+
+[pollen]                     # DWD-Pollenflug-Gefahrenindex (kein Key)
+enabled = true
+# 121 Allgäu/Oberbayern/Bay. Wald, 122 Donauniederungen,
+# 123 Bayern n. der Donau (o. Bay. Wald, o. Mainfranken), 124 Mainfranken
+partregion_id = 123
+types = ["Hasel", "Erle", "Birke", "Gräser"]   # max. 4 von: Hasel Erle Esche Birke Gräser Roggen Beifuß Ambrosia
+
+# --- Unterwegs-Ansicht --------------------------------------------------------------
+[fuel]                       # Tankerkönig, Key: https://onboarding.tankerkoenig.de
+api_key = "${TANKERKOENIG_API_KEY}"
+radius_km = 5
+count = 3
+types = ["e5", "diesel"]     # eine oder zwei Sorten: e5 | e10 | diesel
+station_ids = []             # optional: feste Tankstellen (IDs, Reihenfolge = Anzeige)
+
+[transit]
+provider = "vgn"             # "vgn" (start.vag.de) oder "db" (v6.db.transport.rest)
+# ID suchen:  python -m infotafel haltestelle "Herzogenaurach Münchener"
+stop_id = ""
+stop_name = "Münchener Straße"
+lines = []                   # z. B. ["200", "201"] – leer = alle Linien
+directions = []              # Teil des Fahrtziels, z. B. ["Erlangen"] – leer = alle
+count = 5
+min_minutes = 2              # Abfahrten, die man nicht mehr schafft, ausblenden
+
+[traffic]
+tomtom_api_key = "${TOMTOM_API_KEY}"      # https://developer.tomtom.com (kostenlos)
+autobahnen = ["A73", "A3"]   # Meldungen der Autobahn GmbH (kein Key)
+radius_km = 25               # nur Meldungen in diesem Umkreis um Zuhause
+tomtom_incidents = false     # zusätzlich Meldungen abseits der Autobahn (TomTom)
+max_items = 3
+
+[[traffic.routes]]           # Fahrtzeit mit Verkehr (TomTom); erste Strecke groß
+name = "Zuhause → Büro"
+from = [49.5672, 10.8819]
+to = [49.5970, 11.0040]      # Koordinaten des Büros eintragen
+
+# --- Nachrichten & Märkte ------------------------------------------------------------
+[news]
+title = "tagesschau.de"
+feeds = ["https://www.tagesschau.de/xml/rss2/"]
+count = 5
+
+# Symbole wie bei finance.yahoo.com; unit wird klein hinter dem Namen angezeigt
+[[markets.items]]
+symbol = "^GDAXI"
+name = "DAX"
+decimals = 0
+
+[[markets.items]]
+symbol = "^GSPC"
+name = "S&P 500"
+decimals = 0
+
+[[markets.items]]
+symbol = "BZ=F"
+name = "Brent"
+unit = "$/bbl"
+decimals = 2
+
+[[markets.items]]
+symbol = "HG=F"
+name = "Kupfer"
+unit = "$/lb"                # Comex-Kupfer notiert in US-Dollar je Pfund
+decimals = 2
+
+# --- Termine & Countdowns -------------------------------------------------------------
+[calendar]
+days = 7                     # so viele Tage im Voraus
+
+[[calendar.feeds]]           # privater ICS-Link (Google: "Privatadresse im iCal-Format")
+url = "${KALENDER_URL}"
+
+[[calendar.feeds]]           # Abfuhrkalender als ICS; symbol "tonne" zeigt ein Mülltonnen-Symbol
+url = "${ABFALL_URL}"
+symbol = "tonne"
+
+# Geburtstage: "JJJJ-MM-TT" (mit Alter), "MM-TT" oder "TT.MM.[JJJJ]"
+[[birthdays]]
+name = "Mama"
+date = "10-29"
+
+[holidays]
+mariae_himmelfahrt = true    # 15.08. – gilt in Gemeinden mit überwiegend katholischer Bevölkerung
+augsburger_friedensfest = false
+school_holidays = true       # Schulferien Bayern über openholidaysapi.org
+extra_school_holidays = []   # z. B. [{ name = "Brückentag", start = "2026-05-15", end = "2026-05-15" }]
