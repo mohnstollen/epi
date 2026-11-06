@@ -94,8 +94,12 @@ def cmd_stop(args):
     if args.provider:
         cfg["transit"]["provider"] = args.provider
     from .sources.mobility import find_stops
-    for name, sid in find_stops(cfg, args.name):
-        print(f"{sid!s:>12}  {name}")
+    stops = find_stops(cfg, args.name)
+    if not stops:
+        print(f"Keine Haltestelle zu „{args.name}“ gefunden (Anbieter: {cfg['transit']['provider']}). "
+              "Anderen Suchbegriff probieren, z. B. nur den Straßennamen.")
+    for name, sid in stops:
+        print(f"{sid!s:>16}  {name}")
 
 
 def main(argv=None):
@@ -127,7 +131,7 @@ def main(argv=None):
     sp = sub.add_parser("haltestelle", help="Haltestellen-ID suchen")
     sp.add_argument("name")
     sp.add_argument("--config", default="config.toml")
-    sp.add_argument("--provider", choices=["vgn", "db"])
+    sp.add_argument("--provider", choices=["efa", "vgn"])
     sp.set_defaults(func=cmd_stop, demo=False)
 
     args = p.parse_args(argv)

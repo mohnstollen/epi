@@ -59,8 +59,10 @@ types = ["e5", "diesel"]     # eine oder zwei Sorten: e5 | e10 | diesel
 station_ids = []             # optional: feste Tankstellen (IDs, Reihenfolge = Anzeige)
 
 [transit]
-provider = "vgn"             # "vgn" (start.vag.de) oder "db" (v6.db.transport.rest)
-# ID suchen:  python -m infotafel haltestelle "Herzogenaurach Münchener"
+provider = "efa"             # "efa" = Fahrplanauskunft Bahnland Bayern (ganz Bayern, mit Echtzeit)
+                             # "vgn" = start.vag.de (nur Nürnberg/Fürth/Stein und Umgebung)
+efa_url = "https://bahnland-bayern.de/efa/"
+# ID suchen:  python -m infotafel haltestelle "Herzogenaurach Münchener"   (ergibt z. B. de:09572:6070)
 stop_id = ""
 stop_name = "Münchener Straße"
 lines = []                   # z. B. ["200", "201"] – leer = alle Linien
@@ -116,7 +118,10 @@ days = 7                     # so viele Tage im Voraus
 [[calendar.feeds]]           # privater ICS-Link (Google: "Privatadresse im iCal-Format")
 url = "${KALENDER_URL}"
 
-[[calendar.feeds]]           # Abfuhrkalender als ICS; symbol "tonne" zeigt ein Mülltonnen-Symbol
+# Abfuhrkalender als ICS; symbol "tonne" zeigt ein Mülltonnen-Symbol.
+# Steht in der URL {jahr}, wird das aktuelle Jahr eingesetzt (Ende Dezember auch das nächste), z. B.
+# ABFALL_URL="https://www.erlangen-hoechstadt.de/komx/surface/dfxabfallics/GetAbfallIcs?ort=…&strasse=…&abfallart=…&jahr={jahr}"
+[[calendar.feeds]]
 url = "${ABFALL_URL}"
 symbol = "tonne"
 

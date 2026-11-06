@@ -1,4 +1,4 @@
-"""Unterwegs: Spritpreise (Tankerkönig), ÖPNV-Abfahrten (VGN oder DB), Fahrtzeit und
+"""Unterwegs: Spritpreise (Tankerkönig), ÖPNV-Abfahrten (EFA Bahnland Bayern oder VAG), Fahrtzeit und
 Verkehrsmeldungen (TomTom, Autobahn GmbH)."""
 import math
 import re
@@ -12,8 +12,6 @@ from .base import NotConfigured, get_json
 TANKERKOENIG_LIST = "https://creativecommons.tankerkoenig.de/json/list.php"
 VGN_DEPARTURES = "https://start.vag.de/dm/api/v1/abfahrten/VGN/{stop}"
 VGN_STOPS = "https://start.vag.de/dm/api/v1/haltestellen/VGN"
-DB_DEPARTURES = "https://v6.db.transport.rest/stops/{stop}/departures"
-DB_LOCATIONS = "https://v6.db.transport.rest/locations"
 TOMTOM_ROUTE = "https://api.tomtom.com/routing/1/calculateRoute/{coords}/json"
 TOMTOM_INCIDENTS = "https://api.tomtom.com/traffic/services/5/incidentDetails"
 AUTOBAHN = "https://verkehr.autobahn.de/o/autobahn/{road}/services/{kind}"
@@ -127,21 +125,30 @@ def parse_vgn(d, tz):
     return result
 
 
-def parse_db(d, tz):
-    deps = d.get("departures", d) if isinstance(d, dict) else d
+def _efa_time(text, tz):
+    return datetime.fromisoformat(text.replace("Z", "+00:00")).astimezone(tz) if text else None
+
+
+def _efa_direction(text):
+    # Ziele enthalten manchmal angehängte interne Nummern: "Dechsendorf Grünauweg      113"
+    return re.split(r"\s{2,}", str(text or "").strip())[0]
+
+
+def parse_efa(d, tz):
+    """Abfahrten aus einem EFA-DM-Request (rapidJSON), z. B. bahnland-bayern.de."""
     result = []
-    for a in deps:
-        planned = a.get("plannedWhen") or a.get("when")
+    for e in d.get("stopEvents") or []:
+        planned = _efa_time(e.get("departureTimePlanned"), tz)
         if not planned:
             continue
-        when = a.get("when")
+        t = e.get("transportation") or {}
+        status = e.get("realtimeStatus") or []
         result.append(Departure(
-            line=_norm_line((a.get("line") or {}).get("name", "")),
-            direction=" ".join((a.get("direction") or "").split()),
-            planned=datetime.fromisoformat(planned).astimezone(tz),
-            realtime=(datetime.fromisoformat(when).astimezone(tz)
-                      if when and a.get("delay") is not None else None),
-            cancelled=bool(a.get("cancelled")),
+            line=_norm_line(str(t.get("number") or t.get("disassembledName") or t.get("name") or "")),
+            direction=_efa_direction((t.get("destination") or {}).get("name")),
+            planned=planned,
+            realtime=_efa_time(e.get("departureTimeEstimated"), tz),
+            cancelled=bool(e.get("isCancelled")) or "TRIP_CANCELLED" in status,
         ))
     return result
 
@@ -161,25 +168,35 @@ def filter_departures(deps, cfg, now):
     return result
 
 
+def _efa_base(cfg):
+    return cfg["transit"]["efa_url"].rstrip("/") + "/"
+
+
 def fetch_departures(cfg):
-    """Rohe Abfahrten der nächsten 90 Minuten; gefiltert wird erst beim Zeichnen."""
+    """Rohe Abfahrten der nächsten Zeit; gefiltert wird erst beim Zeichnen."""
     tc = cfg["transit"]
     if not tc["stop_id"]:
         raise NotConfigured("transit.stop_id fehlt")
     tz = ZoneInfo(cfg["timezone"])
+    if tc["provider"] == "efa":
+        d = get_json(_efa_base(cfg) + "XML_DM_REQUEST", {
+            "outputFormat": "rapidJSON", "mode": "direct", "type_dm": "stop",
+            "name_dm": tc["stop_id"], "useRealtime": 1, "limit": 40,
+        })
+        return parse_efa(d, tz)
     stop = urllib.parse.quote(str(tc["stop_id"]), safe="")
-    if tc["provider"] == "db":
-        d = get_json(DB_DEPARTURES.format(stop=stop), {"duration": 90, "results": 60})
-        return parse_db(d, tz)
     d = get_json(VGN_DEPARTURES.format(stop=stop), {"timespan": 90, "limitcount": 60})
     return parse_vgn(d, tz)
 
 
 def find_stops(cfg, name):
     """Haltestellensuche für die Einrichtung: Liste (Name, ID)."""
-    if cfg["transit"]["provider"] == "db":
-        d = get_json(DB_LOCATIONS, {"query": name, "results": 10, "addresses": "false", "poi": "false"})
-        return [(s.get("name", ""), s.get("id", "")) for s in d]
+    if cfg["transit"]["provider"] == "efa":
+        d = get_json(_efa_base(cfg) + "XML_STOPFINDER_REQUEST", {
+            "outputFormat": "rapidJSON", "type_sf": "any", "anyObjFilter_sf": 2, "name_sf": name,
+        })
+        return [(s.get("name", ""), s.get("id", "")) for s in d.get("locations") or []
+                if s.get("type") == "stop"]
     d = get_json(VGN_STOPS, {"name": name})
     return [(s.get("Haltestellenname", ""), s.get("VGNKennung", "")) for s in d.get("Haltestellen", [])]
 

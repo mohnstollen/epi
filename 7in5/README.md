@@ -134,7 +134,7 @@ versucht es nach 1, 2, 4, 8, 15 Minuten erneut.
 | [Bright Sky](https://brightsky.dev) | DWD-Unwetterwarnungen | – |
 | [DWD Open Data](https://opendata.dwd.de/climate_environment/health/alerts/) | Pollenflug-Gefahrenindex | – |
 | [Tankerkönig](https://creativecommons.tankerkoenig.de) | Spritpreise (MTS-K, CC BY 4.0) | ja |
-| start.vag.de (VGN) oder v6.db.transport.rest | Abfahrten | – |
+| [Bahnland Bayern](https://bahnland-bayern.de) (EFA) oder start.vag.de | Abfahrten mit Echtzeit | – |
 | [TomTom](https://developer.tomtom.com) | Fahrtzeit, optional Meldungen abseits der Autobahn | ja (frei) |
 | [Autobahn GmbH](https://autobahn.api.bund.dev) | Warnungen, Sperrungen | – |
 | tagesschau.de RSS | Schlagzeilen | – |
@@ -145,7 +145,7 @@ versucht es nach 1, 2, 4, 8, 15 Minuten erneut.
 Feiertage in Bayern und die Mondphase werden lokal berechnet.
 Schrift: IBM Plex Sans Condensed / Plex Mono (SIL Open Font License, `infotafel/fonts/OFL.txt`).
 
-**Hinweis:** Die VGN-Abfahrts-API und Yahoo Finance sind nicht offiziell
+**Hinweis:** Die Abfahrts-Schnittstellen (EFA, VAG) und Yahoo Finance sind nicht offiziell
 dokumentiert und können sich ändern. Fällt eine Quelle aus, zeigen die anderen
 Bereiche weiter ihre Daten. `python -m infotafel check` hilft bei der Fehlersuche.
 
