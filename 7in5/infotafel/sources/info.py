@@ -1,7 +1,10 @@
 """Schlagzeilen (RSS/Atom), Kurse (Yahoo Finance), Kalender (ICS), Geburtstage,
 Feiertage (Bayern, lokal berechnet) und Schulferien (OpenHolidays API)."""
 import html
+import json
 import re
+import shutil
+import subprocess
 import time
 import urllib.error
 import urllib.parse
@@ -138,19 +141,32 @@ def fetch_markets(cfg):
 
 
 def _yahoo_chart(symbol):
-    """Kursverlauf abrufen; bei HTTP 429 kurz warten und den zweiten Yahoo-Server versuchen."""
-    path = YAHOO_CHART.format(symbol=urllib.parse.quote(symbol, safe=""))
-    last = None
-    for attempt, host in enumerate(YAHOO_HOSTS * 2):
-        try:
-            return get_json(host + path, {"range": "1mo", "interval": "1d"},
-                            headers={"User-Agent": BROWSER_UA, "Accept": "application/json"})
-        except urllib.error.HTTPError as e:
-            if e.code != 429:
-                raise
-            last = e
-            time.sleep(3 * (attempt + 1))
-    raise last
+    """Kursverlauf abrufen.
+
+    Yahoo blockt Anfragen aus Pythons urllib inzwischen pauschal mit HTTP 429 (es
+    erkennt den Client am Verbindungsaufbau, nicht am User-Agent), lässt curl aber
+    durch. Deshalb wird, wenn vorhanden, curl verwendet; sonst urllib.
+    """
+    path = YAHOO_CHART.format(symbol=urllib.parse.quote(symbol, safe="")) + "?range=1mo&interval=1d"
+    curl = shutil.which("curl")
+    errors = []
+    for host in YAHOO_HOSTS:
+        url = host + path
+        if curl:
+            r = subprocess.run([curl, "-sS", "--fail", "--max-time", "20", "-A", "Mozilla/5.0", url],
+                               capture_output=True, timeout=30)
+            if r.returncode == 0:
+                return json.loads(r.stdout)
+            errors.append(r.stderr.decode(errors="replace").strip() or f"curl Exit {r.returncode}")
+        else:
+            try:
+                return get_json(url, headers={"User-Agent": BROWSER_UA, "Accept": "application/json"})
+            except urllib.error.HTTPError as e:
+                if e.code != 429:
+                    raise
+                errors.append(f"HTTP 429 ({host})")
+        time.sleep(2)
+    raise RuntimeError("Yahoo: " + "; ".join(errors))
 
 
 # --- Kalender -----------------------------------------------------------------
