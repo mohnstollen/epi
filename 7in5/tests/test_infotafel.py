@@ -158,6 +158,29 @@ class ParserTest(unittest.TestCase):
         self.assertEqual((deps[1].direction, deps[1].delay_minutes), ("Dechsendorf Grünauweg", 3))
         self.assertEqual((deps[2].direction, deps[2].cancelled), ("Herzogenaurach a. d. Schütt", True))
 
+    def test_clean_title(self):
+        from infotafel.sources.info import clean_title
+        self.assertEqual(clean_title("Restmülltonne / Biotonne / Restmüllcontainer , Mi"),
+                         "Restmülltonne / Biotonne / Restmüllcontainer")
+        self.assertEqual(clean_title("Treffen mit Mila"), "Treffen mit Mila")
+
+    def test_yahoo_retry(self):
+        import io
+        import urllib.error
+        from unittest import mock
+        from infotafel.sources import info
+        calls = []
+
+        def fake(url, params=None, **kw):
+            calls.append(url)
+            if len(calls) == 1:
+                raise urllib.error.HTTPError(url, 429, "Too Many Requests", {}, io.BytesIO())
+            return {"ok": True}
+        with mock.patch.object(info, "get_json", fake), mock.patch.object(info.time, "sleep"):
+            self.assertEqual(info._yahoo_chart("^GDAXI"), {"ok": True})
+        self.assertIn("query2", calls[1])
+        self.assertIn("%5EGDAXI", calls[0])
+
     def test_calendar_year(self):
         from infotafel.sources.info import feed_urls
         self.assertEqual(feed_urls("https://x/?jahr={jahr}", 2026, 2027),

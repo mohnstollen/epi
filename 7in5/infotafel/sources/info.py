@@ -2,6 +2,9 @@
 Feiertage (Bayern, lokal berechnet) und Schulferien (OpenHolidays API)."""
 import html
 import re
+import time
+import urllib.error
+import urllib.parse
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
@@ -10,7 +13,8 @@ from zoneinfo import ZoneInfo
 
 from .base import BROWSER_UA, NotConfigured, get, get_json
 
-YAHOO_CHART = "https://query1.finance.yahoo.com/v8/finance/chart/{symbol}"
+YAHOO_HOSTS = ("https://query1.finance.yahoo.com", "https://query2.finance.yahoo.com")
+YAHOO_CHART = "/v8/finance/chart/{symbol}"
 OPENHOLIDAYS = "https://openholidaysapi.org/SchoolHolidays"
 
 
@@ -126,11 +130,27 @@ def fetch_markets(cfg):
         raise NotConfigured("markets.items leer")
     tz = ZoneInfo(cfg["timezone"])
     result = []
-    for item in items:
-        d = get_json(YAHOO_CHART.format(symbol=item["symbol"].replace("^", "%5E")),
-                     {"range": "1mo", "interval": "1d"}, headers={"User-Agent": BROWSER_UA})
-        result.append(parse_chart(d, item, tz))
+    for i, item in enumerate(items):
+        if i:
+            time.sleep(1.5)   # Yahoo drosselt schnelle Abfragefolgen (HTTP 429)
+        result.append(parse_chart(_yahoo_chart(item["symbol"]), item, tz))
     return result
+
+
+def _yahoo_chart(symbol):
+    """Kursverlauf abrufen; bei HTTP 429 kurz warten und den zweiten Yahoo-Server versuchen."""
+    path = YAHOO_CHART.format(symbol=urllib.parse.quote(symbol, safe=""))
+    last = None
+    for attempt, host in enumerate(YAHOO_HOSTS * 2):
+        try:
+            return get_json(host + path, {"range": "1mo", "interval": "1d"},
+                            headers={"User-Agent": BROWSER_UA, "Accept": "application/json"})
+        except urllib.error.HTTPError as e:
+            if e.code != 429:
+                raise
+            last = e
+            time.sleep(3 * (attempt + 1))
+    raise last
 
 
 # --- Kalender -----------------------------------------------------------------
@@ -156,9 +176,19 @@ def parse_ics(raw, tz, start, end, symbol=""):
             dt = datetime(dt.year, dt.month, dt.day, tzinfo=tz)
         elif dt.tzinfo is None:
             dt = dt.replace(tzinfo=tz)
-        title = " ".join(str(ev.get("SUMMARY", "")).split()) or "(ohne Titel)"
+        title = clean_title(str(ev.get("SUMMARY", ""))) or "(ohne Titel)"
         result.append(Event(title, dt.astimezone(tz), all_day, symbol))
     return result
+
+
+_TRAILING_WEEKDAY = re.compile(r"\s*,\s*(Mo|Di|Mi|Do|Fr|Sa|So)\.?$")
+
+
+def clean_title(text):
+    """Leerräume zusammenfassen und einen angehängten Wochentag entfernen
+    ("Restmülltonne / Biotonne , Mi" -> "Restmülltonne / Biotonne")."""
+    text = " ".join(text.split())
+    return _TRAILING_WEEKDAY.sub("", text).strip(" ,")
 
 
 def fetch_calendar(cfg):
