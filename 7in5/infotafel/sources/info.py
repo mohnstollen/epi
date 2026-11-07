@@ -172,9 +172,23 @@ def fetch_calendar(cfg):
     events = []
     for f in feeds:
         url = f["url"].replace("webcal://", "https://", 1)
-        events += parse_ics(get(url, timeout=30), tz, today, end, f.get("symbol", ""))
-    events.sort(key=lambda e: (e.start.date(), not e.all_day, e.start))
-    return events
+        for year, u in feed_urls(url, today.year, end.year):
+            try:
+                raw = get(u, timeout=30)
+            except Exception:
+                if year > today.year:   # Kalender fürs neue Jahr evtl. noch nicht veröffentlicht
+                    continue
+                raise
+            events += parse_ics(raw, tz, today, end, f.get("symbol", ""))
+    unique = {(e.title, e.start, e.symbol): e for e in events}
+    return sorted(unique.values(), key=lambda e: (e.start.date(), not e.all_day, e.start))
+
+
+def feed_urls(url, first_year, last_year):
+    """Setzt {jahr} in der URL ein – über den Jahreswechsel für beide Jahre."""
+    if "{jahr}" not in url:
+        return [(first_year, url)]
+    return [(y, url.replace("{jahr}", str(y))) for y in range(first_year, last_year + 1)]
 
 
 # --- Geburtstage -------------------------------------------------------------

@@ -16,7 +16,7 @@ from infotafel.server import Server, make_handler
 from infotafel.sources import StaticData
 from infotafel.sources.info import (bavarian_holidays, easter, parse_chart, parse_feed,
                                     parse_openholidays, upcoming_birthdays)
-from infotafel.sources.mobility import (filter_departures, parse_autobahn, parse_db, parse_route,
+from infotafel.sources.mobility import (filter_departures, parse_autobahn, parse_efa, parse_route,
                                         parse_stations, parse_vgn)
 from infotafel.sources.weather import moon, parse_alerts, parse_pollen
 
@@ -141,11 +141,28 @@ class ParserTest(unittest.TestCase):
         f = filter_departures(deps, cfg, at(2026, 10, 30, 7, 30))
         self.assertEqual([x.line for x in f], ["200"])
 
-    def test_db(self):
-        d = {"departures": [{"when": None, "plannedWhen": "2026-10-30T07:40:00+01:00", "delay": None,
-                             "direction": "Erlangen Hbf", "line": {"name": "Bus 200"}, "cancelled": True}]}
-        dep = parse_db(d, TZ)[0]
-        self.assertEqual((dep.line, dep.cancelled), ("200", True))
+    def test_efa(self):
+        d = {"stopEvents": [
+            {"departureTimePlanned": "2026-11-07T06:51:00Z",
+             "transportation": {"number": "274", "name": "Regionalbus 274",
+                                "destination": {"name": "Herzo - Base Uhrzeigersinn"}}},
+            {"departureTimePlanned": "2026-11-07T07:39:00Z", "departureTimeEstimated": "2026-11-07T07:42:00Z",
+             "transportation": {"number": "246",
+                                "destination": {"name": "Dechsendorf Grünauweg                    113"}}},
+            {"departureTimePlanned": "2026-11-07T08:22:00Z", "realtimeStatus": ["TRIP_CANCELLED"],
+             "transportation": {"number": "246", "destination": {"name": "Herzogenaurach a. d. Schütt   112"}}},
+        ]}
+        deps = parse_efa(d, TZ)
+        self.assertEqual([x.line for x in deps], ["274", "246", "246"])
+        self.assertEqual((deps[0].planned.hour, deps[0].realtime), (7, None))
+        self.assertEqual((deps[1].direction, deps[1].delay_minutes), ("Dechsendorf Grünauweg", 3))
+        self.assertEqual((deps[2].direction, deps[2].cancelled), ("Herzogenaurach a. d. Schütt", True))
+
+    def test_calendar_year(self):
+        from infotafel.sources.info import feed_urls
+        self.assertEqual(feed_urls("https://x/?jahr={jahr}", 2026, 2027),
+                         [(2026, "https://x/?jahr=2026"), (2027, "https://x/?jahr=2027")])
+        self.assertEqual(feed_urls("https://x/a.ics", 2026, 2027), [(2026, "https://x/a.ics")])
 
     def test_tankerkoenig(self):
         cfg = demo_config()

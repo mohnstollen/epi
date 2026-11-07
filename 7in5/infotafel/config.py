@@ -46,7 +46,8 @@ DEFAULTS = {
         "station_ids": [],
     },
     "transit": {
-        "provider": "vgn",
+        "provider": "efa",
+        "efa_url": "https://bahnland-bayern.de/efa/",
         "stop_id": "",
         "stop_name": "Münchener Straße",
         "lines": [],
@@ -156,8 +157,8 @@ def validate(cfg):
     for t in cfg["fuel"]["types"]:
         if t not in ("e5", "e10", "diesel"):
             raise ValueError(f"fuel.types: unbekannte Sorte {t!r}")
-    if cfg["transit"]["provider"] not in ("vgn", "db"):
-        raise ValueError("transit.provider: 'vgn' oder 'db'")
+    if cfg["transit"]["provider"] not in ("efa", "vgn"):
+        raise ValueError("transit.provider: 'efa' (Bahnland Bayern, ganz Bayern) oder 'vgn' (nur VAG-Gebiet)")
     for i, r in enumerate(cfg["traffic"]["routes"]):
         for key in ("name", "from", "to"):
             if key not in r:
