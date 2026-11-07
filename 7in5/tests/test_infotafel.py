@@ -164,7 +164,7 @@ class ParserTest(unittest.TestCase):
                          "Restmülltonne / Biotonne / Restmüllcontainer")
         self.assertEqual(clean_title("Treffen mit Mila"), "Treffen mit Mila")
 
-    def test_yahoo_retry(self):
+    def test_yahoo_urllib_fallback(self):
         import io
         import urllib.error
         from unittest import mock
@@ -176,10 +176,23 @@ class ParserTest(unittest.TestCase):
             if len(calls) == 1:
                 raise urllib.error.HTTPError(url, 429, "Too Many Requests", {}, io.BytesIO())
             return {"ok": True}
-        with mock.patch.object(info, "get_json", fake), mock.patch.object(info.time, "sleep"):
+        with mock.patch.object(info, "get_json", fake), mock.patch.object(info.time, "sleep"), \
+                mock.patch.object(info.shutil, "which", return_value=None):
             self.assertEqual(info._yahoo_chart("^GDAXI"), {"ok": True})
         self.assertIn("query2", calls[1])
         self.assertIn("%5EGDAXI", calls[0])
+
+    def test_yahoo_curl(self):
+        import subprocess
+        from unittest import mock
+        from infotafel.sources import info
+        done = subprocess.CompletedProcess([], 0, stdout=b'{"chart": 1}', stderr=b"")
+        with mock.patch.object(info.shutil, "which", return_value="/usr/bin/curl"), \
+                mock.patch.object(info.subprocess, "run", return_value=done) as run:
+            self.assertEqual(info._yahoo_chart("BZ=F"), {"chart": 1})
+        args = run.call_args[0][0]
+        self.assertEqual(args[0], "/usr/bin/curl")
+        self.assertIn("BZ%3DF?range=1mo&interval=1d", args[-1])
 
     def test_calendar_year(self):
         from infotafel.sources.info import feed_urls
