@@ -237,10 +237,16 @@ def fetch_routes(cfg):
     result = []
     for r in tr["routes"]:
         coords = f"{r['from'][0]},{r['from'][1]}:{r['to'][0]},{r['to'][1]}"
-        d = get_json(TOMTOM_ROUTE.format(coords=coords), {
+        params = {
             "key": tr["tomtom_api_key"], "traffic": "true",
             "computeTravelTimeFor": "all", "routeType": "fastest", "travelMode": "car",
-        })
+        }
+        # Ohne Angabe rechnet TomTom auf freien Autobahnen mit real gefahrenen (oft hohen)
+        # Geschwindigkeiten; eine Höchstgeschwindigkeit macht lange Strecken realistischer.
+        speed = int(r.get("max_speed_kmh", tr["max_speed_kmh"]) or 0)
+        if speed > 0:
+            params["vehicleMaxSpeed"] = speed
+        d = get_json(TOMTOM_ROUTE.format(coords=coords), params)
         result.append(parse_route(d, r["name"], tz))
     return result
 

@@ -61,6 +61,7 @@ DEFAULTS = {
         "autobahnen": ["A73", "A3"],
         "radius_km": 25.0,
         "tomtom_incidents": False,
+        "max_speed_kmh": 130,
         "max_items": 3,
     },
     "news": {"title": "tagesschau.de", "feeds": ["https://www.tagesschau.de/xml/rss2/"], "count": 5,
