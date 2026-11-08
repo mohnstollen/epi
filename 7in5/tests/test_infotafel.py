@@ -308,6 +308,18 @@ class TweaksTest(unittest.TestCase):
         ctx = Context(cfg, None, at(2026, 11, 9, 10, 0), "nachrichten", list(VIEWS), [])
         self.assertEqual(len(pick_feed(ctx, feeds)[1]), 3)
 
+    def test_route_max_speed(self):
+        from unittest import mock
+        from infotafel.sources import mobility
+        cfg = demo_config()
+        cfg["traffic"]["routes"] = [{"name": "A", "from": [1, 2], "to": [3, 4]},
+                                    {"name": "B", "from": [1, 2], "to": [3, 4], "max_speed_kmh": 0}]
+        reply = {"routes": [{"summary": {"travelTimeInSeconds": 600}}]}
+        with mock.patch.object(mobility, "get_json", return_value=reply) as g:
+            mobility.fetch_routes(cfg)
+        self.assertEqual(g.call_args_list[0][0][1]["vehicleMaxSpeed"], 130)
+        self.assertNotIn("vehicleMaxSpeed", g.call_args_list[1][0][1])
+
     def test_many_routes_render(self):
         from infotafel.sources.mobility import RouteTime
         now = at(2026, 11, 9, 7, 30)

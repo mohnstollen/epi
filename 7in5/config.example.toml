@@ -75,6 +75,8 @@ tomtom_api_key = "${TOMTOM_API_KEY}"      # https://developer.tomtom.com (kosten
 autobahnen = ["A73", "A3"]   # Meldungen der Autobahn GmbH (kein Key)
 radius_km = 25               # nur Meldungen in diesem Umkreis um Zuhause
 tomtom_incidents = false     # zusätzlich Meldungen abseits der Autobahn (TomTom)
+max_speed_kmh = 130          # Höchstgeschwindigkeit des eigenen Autos für die Fahrzeit (0 = TomTom-Standard,
+                             # rechnet auf freien Autobahnen schneller); je Strecke auch einzeln setzbar
 max_items = 3
 
 [[traffic.routes]]           # Fahrtzeit mit Verkehr (TomTom); erste Strecke groß
