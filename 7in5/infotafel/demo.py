@@ -3,7 +3,7 @@ import copy
 from datetime import datetime, timedelta
 
 from .config import DEFAULTS
-from .sources.info import Event, Headline, Quote, Vacation
+from .sources.info import Event, Feed, Headline, Quote, Vacation
 from .sources.mobility import Departure, Incident, RouteTime, Station
 from .sources.weather import Day, Warning, Weather
 
@@ -82,7 +82,7 @@ def demo_values(now):
             Incident("A73", "A73 Erlangen-Bruck – Erlangen-Zentrum",
                      "Richtung Nürnberg · 3 km Stau", "stau", 7.0),
         ],
-        "news": [
+        "news": [Feed("tagesschau.de", "https://www.tagesschau.de/xml/rss2/", [
             Headline("Bundestag beschließt Haushalt für 2027 nach langer Debatte über Investitionen und Schuldenbremse",
                      now - timedelta(minutes=18)),
             Headline("Unwetterwarnung für Teile Bayerns: Sturmböen bis 70 km/h erwartet", now - timedelta(minutes=42)),
@@ -91,7 +91,7 @@ def demo_values(now):
                      now - timedelta(hours=1, minutes=40)),
             Headline("Champions League: Bayern gewinnt knapp", now - timedelta(hours=2, minutes=10)),
             Headline("Neue Studie zu Mikroplastik im Grundwasser", now - timedelta(hours=3)),
-        ],
+        ])],
         "markets": [
             Quote("DAX", "", 0, 24312.5, 24118.2,
                   [23801, 23955, 24020, 23890, 23710, 23860, 24050, 23980, 24118.2, 24312.5], at(-1, 17, 35)),

@@ -1,6 +1,6 @@
 """Ansicht "Wetter": aktuelles Wetter, 4 Tage, Warnungen, Pollen, Sonne, Mond."""
 from .. import icons
-from ..icons import describe, draw_icon
+from ..icons import day_code, describe, draw_icon
 from ..render import PAD, WEEKDAYS, W, de_num, mono, sans, temp
 from ..sources.weather import moon
 
@@ -34,7 +34,7 @@ def _days(cv, ctx, w, x0, x1, y):
             cv.draw.rectangle((x0 + i * cw, y, x0 + i * cw, y + 132), fill=0)
         label = "Heute" if d.day == ctx.now.date() else WEEKDAYS[d.day.weekday()]
         cv.text((cx, y), label.upper(), sans(17, "bold"), "ma")
-        draw_icon(cv.draw, d.weather_code, cx - 25, y + 26, 50)
+        draw_icon(cv.draw, day_code(d.weather_code, d.precipitation), cx - 25, y + 26, 50)
         hi, lo = temp(d.temp_max), temp(d.temp_min)
         f_hi, f_lo = mono(21), mono(19, bold=False)
         tw = cv.width(hi, f_hi) + 8 + cv.width(lo, f_lo)

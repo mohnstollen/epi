@@ -63,7 +63,8 @@ DEFAULTS = {
         "tomtom_incidents": False,
         "max_items": 3,
     },
-    "news": {"title": "tagesschau.de", "feeds": ["https://www.tagesschau.de/xml/rss2/"], "count": 5},
+    "news": {"title": "tagesschau.de", "feeds": ["https://www.tagesschau.de/xml/rss2/"], "count": 5,
+             "rotate": True},
     "markets": {"items": []},
     "calendar": {"feeds": [], "days": 7},
     "birthdays": [],
@@ -163,6 +164,16 @@ def validate(cfg):
         for key in ("name", "from", "to"):
             if key not in r:
                 raise ValueError(f"traffic.routes[{i}]: '{key}' fehlt")
+    feeds = []
+    for i, f in enumerate(cfg["news"]["feeds"]):
+        if isinstance(f, str):
+            f = {"url": f}
+        if not isinstance(f, dict) or not f.get("url"):
+            raise ValueError(f"news.feeds[{i}]: URL oder {{ title = \"…\", url = \"…\" }} angeben")
+        feeds.append({"url": f["url"], "title": f.get("title", "")})
+    if len(feeds) == 1 and not feeds[0]["title"]:
+        feeds[0]["title"] = cfg["news"]["title"]
+    cfg["news"]["feeds"] = feeds
     for i, b in enumerate(cfg["birthdays"]):
         if "name" not in b or "date" not in b:
             raise ValueError(f"birthdays[{i}]: 'name' und 'date' angeben")

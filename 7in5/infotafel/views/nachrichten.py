@@ -1,15 +1,33 @@
 """Ansicht "Nachrichten & Märkte": Schlagzeilen und Kurse mit Verlaufslinie."""
 from .. import icons
 from ..render import PAD, WEEKDAYS, W, de_num, mono, sans
+from ..sources.info import merged_headlines
 
 TOP = 64
 SPLIT = 452       # linke Kante der Kursspalte
 
 
+def pick_feed(ctx, feeds):
+    """Welcher Feed diesmal gezeigt wird: bei jedem Erscheinen der Ansicht der nächste.
+    Liefert (Titel, Schlagzeilen, Zusatz rechts in der Überschrift)."""
+    nc = ctx.cfg["news"]
+    ok = [f for f in feeds if f.items]
+    if not ok:
+        return (feeds[0].title if feeds else nc["title"]), None, None
+    if not nc["rotate"] or len(ok) == 1:
+        title = ok[0].title if len(feeds) == 1 else nc["title"]
+        return title, merged_headlines(ok), f"neueste {nc['count']}"
+    # Die Ansicht erscheint einmal pro Runde durch alle Ansichten; jede Runde ein anderer Feed.
+    round_s = ctx.cfg["schedule"]["interval_minutes"] * 60 * max(1, len(ctx.views))
+    i = int(ctx.now.timestamp() // round_s) % len(ok)
+    return ok[i].title, ok[i].items, f"{i + 1}/{len(ok)}"
+
+
 def _headlines(cv, ctx, x0, x1, bottom):
     nc = ctx.cfg["news"]
-    y = cv.label(x0, TOP, x1, nc["title"], f"neueste {nc['count']}")
-    items = ctx.data.get("news")
+    feeds = ctx.data.get("news")
+    title, items, right = pick_feed(ctx, feeds or [])
+    y = cv.label(x0, TOP, x1, cv.fit(title, sans(15, "bold"), x1 - x0 - 60), right)
     if items is None:
         cv.unavailable((x0, y, x1, bottom),
                        "nicht eingerichtet" if not ctx.data.sources["news"].configured else "keine Daten")
