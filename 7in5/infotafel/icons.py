@@ -27,6 +27,18 @@ def describe(code):
     return DESCRIPTIONS.get(code, f"Wettercode {code}")
 
 
+PRECIP_KINDS = ("drizzle", "rain", "snow", "showers")
+
+
+def day_code(code, precipitation):
+    """Wettercode für die Tagesvorschau: Open-Meteo liefert das „schlimmste“ Wetter des
+    Tages, auch wenn kaum etwas fällt. Unter 0,1 mm zeigen wir nur Wolken, damit Symbol
+    und „trocken“ nicht widersprechen."""
+    if _kind(code) in PRECIP_KINDS and (precipitation is None or precipitation < 0.1):
+        return 3
+    return code
+
+
 def _kind(code):
     if code == 0:
         return "clear"
@@ -89,12 +101,13 @@ def _rain(draw, x, y, w, h, lw, n=3):
 
 
 def _drizzle(draw, x, y, w, h, lw, n=3):
-    r = max(1.5, lw * 0.8)
+    """Nieselregen: kurze schräge Striche in zwei Reihen (Punkte sähen wie Schnee aus)."""
+    d = h * 0.14
     for i in range(n):
         px = x + w * (i + 0.5) / n
-        for py in (y + h * 0.2, y + h * 0.8):
-            off = h * 0.12 if py > y + h / 2 else 0
-            draw.ellipse((px - off - r, py - r, px - off + r, py + r), fill=BLACK)
+        for row, py in enumerate((y + h * 0.22, y + h * 0.72)):
+            ox = -h * 0.12 * row
+            draw.line((px + ox + d, py - d, px + ox - d, py + d), fill=BLACK, width=lw)
 
 
 def _snow(draw, x, y, w, h, lw, n=3):

@@ -9,8 +9,8 @@ import time
 import urllib.error
 import urllib.parse
 import xml.etree.ElementTree as ET
-from dataclasses import dataclass
-from datetime import date, datetime, timedelta
+from dataclasses import dataclass, field
+from datetime import date, datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 from zoneinfo import ZoneInfo
 
@@ -46,7 +46,18 @@ def _parse_date(text, tz):
 
 
 def parse_feed(raw, tz):
+    return parse_feed_full(raw, tz)[1]
+
+
+def parse_feed_full(raw, tz):
+    """(Titel des Feeds, Schlagzeilen)."""
     root = ET.fromstring(raw)
+    channel_title = ""
+    for el in root.iter():
+        if el.tag.rsplit("}", 1)[-1] in ("item", "entry"):
+            break
+        if el.tag.rsplit("}", 1)[-1] == "title" and el.text and not channel_title:
+            channel_title = " ".join(html.unescape(el.text).split())
     items = []
     for el in root.iter():
         tag = el.tag.rsplit("}", 1)[-1]
@@ -62,26 +73,53 @@ def parse_feed(raw, tz):
         title = " ".join(html.unescape(title or "").split())
         if title:
             items.append(Headline(title, _parse_date(date_text, tz)))
-    return items
+    return channel_title, items
+
+
+@dataclass
+class Feed:
+    title: str
+    url: str
+    items: list | None = field(default=None, repr=False)   # None = Abruf fehlgeschlagen
+
+    def __repr__(self):
+        return f"Feed({self.title!r}, {len(self.items or [])} Schlagzeilen)"
 
 
 def fetch_news(cfg):
+    """Alle Feeds einzeln laden; ein kaputter Feed legt die anderen nicht lahm."""
     nc = cfg["news"]
     if not nc["feeds"]:
         raise NotConfigured("news.feeds leer")
     tz = ZoneInfo(cfg["timezone"])
-    items = []
-    for url in nc["feeds"]:
-        items += parse_feed(get(url), tz)
+    result, errors = [], []
+    for f in nc["feeds"]:
+        feed = Feed(f["title"], f["url"])
+        try:
+            channel_title, items = parse_feed_full(get(f["url"]), tz)
+            feed.title = feed.title or channel_title or urllib.parse.urlsplit(f["url"]).hostname or "News"
+            feed.items = items[:20]
+        except Exception as e:
+            errors.append(f"{f['url']}: {e}")
+            feed.title = feed.title or urllib.parse.urlsplit(f["url"]).hostname or "News"
+        result.append(feed)
+    if all(f.items is None for f in result):
+        raise RuntimeError("; ".join(errors))
+    return result
+
+
+def merged_headlines(feeds):
+    """Alle Schlagzeilen aller Feeds, neueste zuerst, ohne Doppelte."""
     seen, result = set(), []
-    for h in items:
-        if h.title not in seen:
-            seen.add(h.title)
-            result.append(h)
-    if len(nc["feeds"]) > 1:
-        far_past = datetime(1970, 1, 1, tzinfo=tz)
+    for f in feeds:
+        for h in f.items or []:
+            if h.title not in seen:
+                seen.add(h.title)
+                result.append(h)
+    if len(feeds) > 1:
+        far_past = datetime(1970, 1, 1, tzinfo=timezone.utc)
         result.sort(key=lambda h: h.published or far_past, reverse=True)
-    return result[:20]
+    return result
 
 
 # --- Kurse ---------------------------------------------------------------------

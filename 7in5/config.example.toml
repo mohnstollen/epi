@@ -55,7 +55,7 @@ types = ["Hasel", "Erle", "Birke", "Gräser"]   # max. 4 von: Hasel Erle Esche B
 api_key = "${TANKERKOENIG_API_KEY}"
 radius_km = 5
 count = 3
-types = ["e5", "diesel"]     # eine oder zwei Sorten: e5 | e10 | diesel
+types = ["e5", "diesel"]     # eine oder zwei Sorten: e5 | e10 | diesel  (z. B. ["e10", "diesel"])
 station_ids = []             # optional: feste Tankstellen (IDs, Reihenfolge = Anzeige)
 
 [transit]
@@ -82,13 +82,26 @@ name = "Zuhause → Büro"
 from = [49.5672, 10.8819]
 to = [49.5970, 11.0040]      # Koordinaten des Büros eintragen
 
+# Weitere Strecken erscheinen kompakt darunter (Name, Fahrzeit, Abweichung).
+# Bis zu 2 weitere lassen Platz für 3 Verkehrsmeldungen; jede weitere kostet eine Meldung.
+# [[traffic.routes]]
+# name = "Zuhause → Oma"
+# from = [49.5672, 10.8819]
+# to = [49.0000, 11.0000]
+
 # --- Nachrichten & Märkte ------------------------------------------------------------
 [news]
-title = "tagesschau.de"
-feeds = ["https://www.tagesschau.de/xml/rss2/"]
+title = "Nachrichten"        # Überschrift, wenn rotate = false und mehrere Feeds gemischt werden
 count = 5
+rotate = true                # mehrere Feeds: bei jedem Erscheinen der Ansicht der nächste Feed
+feeds = [
+  { title = "tagesschau.de", url = "https://www.tagesschau.de/xml/rss2/" },
+  # { title = "BR24", url = "https://…" },
+]
 
-# Symbole wie bei finance.yahoo.com; unit wird klein hinter dem Namen angezeigt
+# Symbole wie bei finance.yahoo.com (dort suchen, das Kürzel steht in Klammern hinter dem Namen).
+# Deutsche Aktien an Xetra enden auf .DE, z. B. Siemens Energy "ENR.DE", Deutsche Telekom "DTE.DE".
+# unit wird klein hinter dem Namen angezeigt. Platz für höchstens 6 Werte.
 [[markets.items]]
 symbol = "^GDAXI"
 name = "DAX"

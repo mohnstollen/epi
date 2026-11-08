@@ -36,12 +36,21 @@ def _route(cv, ctx, y):
     if r.arrival:
         cv.text((PAD, y), f"Ankunft ca. {r.arrival:%H:%M}", sans(17))
         y += 26
-    for extra in routes[1:2]:   # zweite Strecke kompakt
+    extras = routes[1:]
+    if extras:
+        cv.hline(PAD, LEFT_R, y - 2)
+        y += 4
+    for extra in extras:   # weitere Strecken kompakt, eine Zeile je Strecke
+        f_name, f_min = sans(18, "semibold"), mono(18)
+        delta_w = 46
+        mins = f"{extra.minutes} min"
+        cv.text((LEFT_R - delta_w, y + 19), mins, f_min, "rs")
         diff = extra.extra_minutes
-        more = f"  ({'+' if diff >= 0 else '−'}{abs(diff)})" if extra.typical_minutes and abs(diff) >= 2 else ""
-        line = f"{extra.name}: {extra.minutes} min{more}"
-        cv.text((PAD, y), cv.fit(line, sans(17, "semibold"), LEFT_R - PAD), sans(17, "semibold"))
-        y += 26
+        if extra.typical_minutes and abs(diff) >= 2:
+            cv.text((LEFT_R, y + 19), f"{'+' if diff > 0 else '−'}{abs(diff)}", sans(17, "bold"), "rs")
+        name_w = LEFT_R - delta_w - cv.width(mins, f_min) - 12 - PAD
+        cv.text((PAD, y + 19), cv.fit(extra.name, f_name, name_w), f_name, "ls")
+        y += 28
     return y + 6
 
 
@@ -120,7 +129,7 @@ def _fuel(cv, ctx, y, bottom):
         cv.unavailable((RIGHT_L, y, RIGHT_R, bottom),
                        "nicht eingerichtet" if not ctx.data.sources["fuel"].configured else "keine Daten")
         return
-    cheapest = {t: min((s.prices[t] for s in stations if s.prices[t]), default=None) for t in types}
+    cheapest = {t: min((s.prices.get(t) for s in stations if s.prices.get(t)), default=None) for t in types}
     row_h = 34
     for i, s in enumerate(stations):
         if y + row_h > bottom + 6:
@@ -133,7 +142,7 @@ def _fuel(cv, ctx, y, bottom):
         cv.text((RIGHT_L, y + 21), name, f_name, "ls")
         cv.text((RIGHT_L + cv.width(name, f_name), y + 21), detail, sans(16), "ls")
         for j, t in enumerate(reversed(types)):
-            p = s.prices[t]
+            p = s.prices.get(t)
             cx = RIGHT_R - j * (col_w + 8) - col_w / 2
             if p is None:
                 cv.text((cx, y + 21), "–", mono(19), "ms")

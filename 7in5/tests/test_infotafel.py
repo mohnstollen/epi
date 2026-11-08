@@ -273,6 +273,51 @@ class ParserTest(unittest.TestCase):
         self.assertLess(moon(at(2026, 11, 9, 12)).illumination, 0.03)
 
 
+class TweaksTest(unittest.TestCase):
+    def test_day_code(self):
+        from infotafel.icons import day_code
+        self.assertEqual(day_code(61, 0.0), 3)      # Regen-Code, aber trocken -> Wolken
+        self.assertEqual(day_code(51, None), 3)
+        self.assertEqual(day_code(61, 2.5), 61)
+        self.assertEqual(day_code(0, 0.0), 0)
+        self.assertEqual(day_code(95, 0.0), 95)     # Gewitter bleibt
+
+    def test_feed_config(self):
+        cfg = demo_config()
+        cfg["news"]["feeds"] = ["https://a/rss", {"title": "B", "url": "https://b/rss"}]
+        cfg = config_mod.validate(cfg)
+        self.assertEqual(cfg["news"]["feeds"], [{"url": "https://a/rss", "title": ""},
+                                                {"url": "https://b/rss", "title": "B"}])
+
+    def test_feed_rotation(self):
+        from infotafel.render import Context
+        from infotafel.sources.info import Feed, Headline
+        from infotafel.views.nachrichten import pick_feed
+        cfg = demo_config()
+        feeds = [Feed(f"F{i}", "u", [Headline(f"h{i}", None)]) for i in range(3)]
+        feeds.append(Feed("kaputt", "u", None))
+        seen = []
+        for k in range(3):   # drei Runden à 4 Ansichten x 5 min
+            now = at(2026, 11, 9, 10, 0) + timedelta(minutes=20 * k)
+            ctx = Context(cfg, None, now, "nachrichten", list(VIEWS), [])
+            title, items, right = pick_feed(ctx, feeds)
+            seen.append(title)
+            self.assertTrue(right.endswith("/3"))
+        self.assertEqual(sorted(seen), ["F0", "F1", "F2"])
+        cfg["news"]["rotate"] = False
+        ctx = Context(cfg, None, at(2026, 11, 9, 10, 0), "nachrichten", list(VIEWS), [])
+        self.assertEqual(len(pick_feed(ctx, feeds)[1]), 3)
+
+    def test_many_routes_render(self):
+        from infotafel.sources.mobility import RouteTime
+        now = at(2026, 11, 9, 7, 30)
+        cfg = demo_config()
+        values = demo_values(now)
+        values["routes"] += [RouteTime("Oma", 34, 29, None), RouteTime("Ferienhaus", 152, 150, None)]
+        f = make_frame(cfg, StaticData(cfg, values), now, "unterwegs")
+        self.assertEqual(len(f.to_buffer()), 48000)
+
+
 class RenderTest(unittest.TestCase):
     def test_all_views_demo(self):
         now = at(2026, 10, 30, 7, 30)
