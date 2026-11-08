@@ -1,8 +1,11 @@
 """Zeichen-Grundlagen: Schriften, Textumbruch, Kopfzeile, Abschnittsüberschriften.
 
-Gezeichnet wird direkt in ein 1-Bit-Bild (Modus "1"): Text ohne Kantenglättung,
-damit das e-Paper scharfe Kanten ohne Grauraster zeigt.
+Gezeichnet wird in ein 1-Bit-Bild (Modus "1"), damit das e-Paper scharfe Kanten
+ohne Grauraster zeigt. Text wird dafür vierfach vergrößert gezeichnet, verkleinert
+und erst dann in Schwarz/Weiß umgewandelt: Das ergibt gleichmäßigere Strichstärken
+und Abstände als die direkte 1-Bit-Ausgabe der (nicht für Pixel optimierten) Schrift.
 """
+import math
 from dataclasses import dataclass
 from datetime import datetime
 from functools import lru_cache
@@ -16,6 +19,8 @@ W, H = 800, 480
 HEADER = 48
 PAD = 20
 BLACK, WHITE = 0, 255
+SS = 4                 # Überabtastung beim Textzeichnen
+INK_THRESHOLD = 105    # ab dieser Deckung (0–255) wird ein Pixel schwarz; kleiner = kräftiger
 FONT_DIR = Path(__file__).with_name("fonts")
 
 WEEKDAYS = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
@@ -31,6 +36,18 @@ def sans(size, weight="regular"):
 @lru_cache(maxsize=None)
 def mono(size, bold=True):
     return ImageFont.truetype(str(FONT_DIR / f"IBMPlexMono-{'Bold' if bold else 'Medium'}.ttf"), size)
+
+
+@lru_cache(maxsize=None)
+def _big(path, size):
+    return ImageFont.truetype(path, size * SS)
+
+
+def _scaled(font):
+    return _big(font.path, font.size)
+
+
+_INK = [255 if v >= INK_THRESHOLD else 0 for v in range(256)]
 
 
 def de_num(value, decimals=0, sign=False):
@@ -67,10 +84,23 @@ class Canvas:
 
     # --- Text -------------------------------------------------------------------
     def width(self, text, font):
-        return self.draw.textlength(text, font=font)
+        return self.draw.textlength(text, font=_scaled(font)) / SS
 
     def text(self, xy, text, font, anchor="la", fill=BLACK):
-        self.draw.text(xy, text, font=font, fill=fill, anchor=anchor)
+        """Text überabgetastet zeichnen (siehe Moduldoku)."""
+        if not text:
+            return
+        big = _scaled(font)
+        l, t, r, b = big.getbbox(text, anchor=anchor)
+        # Ausschnitt auf Vielfache von SS ausrichten, damit die Verkleinerung pixelgenau ist
+        ox, oy = math.floor(l / SS) * SS - SS, math.floor(t / SS) * SS - SS
+        w = math.ceil((r - ox) / SS + 1) * SS
+        h = math.ceil((b - oy) / SS + 1) * SS
+        layer = Image.new("L", (w, h), 0)
+        ImageDraw.Draw(layer).text((-ox, -oy), text, font=big, fill=255, anchor=anchor)
+        mask = layer.resize((w // SS, h // SS), Image.BOX).point(_INK).convert("1")
+        x, y = xy
+        self.image.paste(fill, (round(x + ox / SS), round(y + oy / SS)), mask)
 
     def fit(self, text, font, max_width):
         """Kürzt ``text`` mit "…", bis er in ``max_width`` passt."""
