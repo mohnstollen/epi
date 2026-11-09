@@ -29,7 +29,9 @@ WEEKDAYS_LONG = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Sam
 
 @lru_cache(maxsize=None)
 def sans(size, weight="regular"):
-    name = {"regular": "Regular", "semibold": "SemiBold", "bold": "Bold"}[weight]
+    # "regular" nutzt bewusst den Medium-Schnitt: Der echte Regular-Schnitt hat bei
+    # 15–20 px nur 1 Pixel breite Striche und wirkt auf dem e-Paper dünn und unruhig.
+    name = {"regular": "Medium", "semibold": "SemiBold", "bold": "Bold"}[weight]
     return ImageFont.truetype(str(FONT_DIR / f"IBMPlexSansCondensed-{name}.ttf"), size)
 
 
