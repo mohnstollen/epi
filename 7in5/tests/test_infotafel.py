@@ -286,8 +286,23 @@ class TweaksTest(unittest.TestCase):
         cfg = demo_config()
         cfg["news"]["feeds"] = ["https://a/rss", {"title": "B", "url": "https://b/rss"}]
         cfg = config_mod.validate(cfg)
-        self.assertEqual(cfg["news"]["feeds"], [{"url": "https://a/rss", "title": ""},
-                                                {"url": "https://b/rss", "title": "B"}])
+        self.assertEqual(cfg["news"]["feeds"], [{"url": "https://a/rss", "title": "", "exclude": []},
+                                                {"url": "https://b/rss", "title": "B", "exclude": []}])
+
+    def test_select_headlines(self):
+        from infotafel.sources.info import Headline, select_headlines
+        now = at(2026, 11, 9, 18, 0)
+        items = [Headline("Region Bautzen", at(2026, 8, 15, 13, 26)),
+                 Headline("Region Leipzig", at(2026, 9, 22, 9, 41)),
+                 Headline("Wetter", at(2026, 11, 9, 6, 20)),
+                 Headline("Ältere Meldung", at(2026, 11, 9, 8, 0)),
+                 Headline("Neue Meldung", at(2026, 11, 9, 17, 0)),
+                 Headline("Ohne Datum", None)]
+        got = [h.title for h in select_headlines(items, ["^Wetter$"], 48, now)]
+        self.assertEqual(got, ["Neue Meldung", "Ältere Meldung", "Ohne Datum"])
+        got = [h.title for h in select_headlines(items, [], 0, now)]
+        self.assertEqual(got[:2], ["Neue Meldung", "Ältere Meldung"])
+        self.assertEqual(len(got), 6)
 
     def test_feed_rotation(self):
         from infotafel.render import Context
