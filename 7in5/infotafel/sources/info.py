@@ -98,7 +98,8 @@ def fetch_news(cfg):
         try:
             channel_title, items = parse_feed_full(get(f["url"]), tz)
             feed.title = feed.title or channel_title or urllib.parse.urlsplit(f["url"]).hostname or "News"
-            feed.items = items[:20]
+            feed.items = select_headlines(items, f.get("exclude", []), nc["max_age_hours"],
+                                          datetime.now(tz))[:20]
         except Exception as e:
             errors.append(f"{f['url']}: {e}")
             feed.title = feed.title or urllib.parse.urlsplit(f["url"]).hostname or "News"
@@ -106,6 +107,21 @@ def fetch_news(cfg):
     if all(f.items is None for f in result):
         raise RuntimeError("; ".join(errors))
     return result
+
+
+def select_headlines(items, exclude, max_age_hours, now):
+    """Neueste zuerst; zu alte Einträge und solche, die auf ``exclude`` passen, weglassen.
+
+    ``exclude``: Textstücke oder reguläre Ausdrücke (Groß-/Kleinschreibung egal), z. B.
+    ``["^Region ", "Wetter"]``. Einträge ohne Datum bleiben, kommen aber ans Ende.
+    """
+    patterns = [re.compile(p, re.I) for p in exclude]
+    oldest = now - timedelta(hours=max_age_hours) if max_age_hours else None
+    keep = [h for h in items
+            if not any(p.search(h.title) for p in patterns)
+            and (oldest is None or h.published is None or h.published >= oldest)]
+    far_past = datetime(1970, 1, 1, tzinfo=timezone.utc)
+    return sorted(keep, key=lambda h: h.published or far_past, reverse=True)
 
 
 def merged_headlines(feeds):

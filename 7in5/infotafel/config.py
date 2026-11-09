@@ -65,7 +65,7 @@ DEFAULTS = {
         "max_items": 3,
     },
     "news": {"title": "tagesschau.de", "feeds": ["https://www.tagesschau.de/xml/rss2/"], "count": 5,
-             "rotate": True},
+             "rotate": True, "max_age_hours": 48},
     "markets": {"items": []},
     "calendar": {"feeds": [], "days": 7},
     "birthdays": [],
@@ -171,7 +171,15 @@ def validate(cfg):
             f = {"url": f}
         if not isinstance(f, dict) or not f.get("url"):
             raise ValueError(f"news.feeds[{i}]: URL oder {{ title = \"…\", url = \"…\" }} angeben")
-        feeds.append({"url": f["url"], "title": f.get("title", "")})
+        exclude = f.get("exclude", [])
+        if isinstance(exclude, str):
+            exclude = [exclude]
+        for pattern in exclude:
+            try:
+                re.compile(pattern)
+            except re.error as e:
+                raise ValueError(f"news.feeds[{i}].exclude: {pattern!r} ist kein gültiges Muster ({e})")
+        feeds.append({"url": f["url"], "title": f.get("title", ""), "exclude": exclude})
     if len(feeds) == 1 and not feeds[0]["title"]:
         feeds[0]["title"] = cfg["news"]["title"]
     cfg["news"]["feeds"] = feeds
