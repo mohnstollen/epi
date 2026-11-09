@@ -32,11 +32,11 @@ def _headlines(cv, ctx, x0, x1, bottom):
         cv.unavailable((x0, y, x1, bottom),
                        "nicht eingerichtet" if not ctx.data.sources["news"].configured else "keine Daten")
         return
-    f_time, f_first, f_rest = mono(15, bold=False), sans(19, "bold"), sans(19)
+    f_time, f_title = mono(15, bold=False), sans(20)
     tx = x0 + 52
     line_h = 23
     for i, h in enumerate(items[: nc["count"]]):
-        f = f_first if i == 0 else f_rest
+        f = f_title
         lines = cv.wrap(h.title, f, x1 - tx, 2)
         need = len(lines) * line_h + 12
         if y + need > bottom:

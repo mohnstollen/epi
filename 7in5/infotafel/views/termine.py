@@ -27,8 +27,8 @@ def _tile(cv, box, symbol, number, unit, text, inverted):
     cv.text((x0 + 12, y0 + 104), number, big, "ls", fg)
     if unit:
         cv.text((x0 + 14 + cv.width(number, big), y0 + 104), unit.upper(), sans(17, "bold"), "ls", fg)
-    for i, line in enumerate(cv.wrap(text, sans(16), x1 - x0 - 24, 2)):
-        cv.text((x0 + 12, y0 + 112 + i * 20), line, sans(16), "la", fg)
+    for i, line in enumerate(cv.wrap(text, sans(15), x1 - x0 - 20, 2)):
+        cv.text((x0 + 10, y0 + 112 + i * 19), line, sans(15), "la", fg)
 
 
 def _countdown(days):
